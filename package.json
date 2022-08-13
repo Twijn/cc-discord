@@ -1,0 +1,24 @@
+{
+  "name": "cc-discord",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Twijn/cc-discord.git"
+  },
+  "author": "Twijn",
+  "license": "GNUv3",
+  "bugs": {
+    "url": "https://github.com/Twijn/cc-discord/issues"
+  },
+  "homepage": "https://github.com/Twijn/cc-discord#readme",
+  "dependencies": {
+    "discord.js": "^14.2.0",
+    "express": "^4.18.1",
+    "ws": "^8.8.1"
+  }
+}
