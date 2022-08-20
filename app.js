@@ -114,3 +114,5 @@ server.on("upgrade", (request, socket, head) => {
 console.log("Started Express webserver on " + config.port);
 
 require("./discord/");
+
+console.log("Startup completed!")
