@@ -12,14 +12,14 @@ CC-Discord is intended to be a simple way to complete basic tasks through Discor
 ```json
 {
     "port":6969,
-	"mysql":{
-		"host":"localhost",
-		"user":"ccdiscord",
-		"password":"1234",
-		"database":"ccdiscord"
-	},
+    "mysql":{
+        "host":"localhost",
+        "user":"ccdiscord",
+        "password":"1234",
+        "database":"ccdiscord"
+    },
     "discord":{
-		"invite":"https://discord.com/invite/6mGFK6BFCW",
+        "invite":"https://discord.com/invite/6mGFK6BFCW",
         "client":"<discord client>",
         "secret":"<discord secret>"
     }
