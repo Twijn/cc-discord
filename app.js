@@ -31,9 +31,7 @@ app.get('/', function (req, res) {
     res.send("We're running!");
 });
 
-const discord = (req, res) => {
-    res.redirect(config.discord.invite);
-}
+const discord = (req, res) => res.redirect(config.discord.invite);
 
 app.get('/discord', discord);
 app.get("/d", discord);
@@ -99,7 +97,6 @@ server.on("upgrade", (request, socket, head) => {
                                 ];
                             }
                         });
-                        console.log(socket.allowed);
                     });
                 });
             } else {
