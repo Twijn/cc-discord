@@ -10,7 +10,17 @@ const wsServer = new ws.Server({noServer: true});
 
 const wsRoutes = require("./wsRoutes");
 
+let nextSocketId = 1;
+
+global.sockets = [];
+
 wsServer.on("connection", socket => {
+    socket.id = nextSocketId++;
+    socket.timeSinceKeepalive = 0;
+    global.sockets = [
+        ...global.sockets,
+        socket
+    ]
     socket.on("message", message => {
         try {
             let msg = JSON.parse(message.toString());
@@ -23,9 +33,20 @@ wsServer.on("connection", socket => {
             }
         } catch (err) {
             console.error(err);
+            console.error(message.toString());
         }
     });
 });
+
+setInterval(function() {
+    global.sockets.forEach(socket => {
+        if (socket.timeSinceKeepalive > 30) {
+            socket.close();
+            sockets = sockets.filter(x => x.id !== socket.id);
+        }
+        socket.timeSinceKeepalive++;
+    });
+}, 1000);
 
 app.get('/', function (req, res) {
     res.send("We're running!");
@@ -59,7 +80,7 @@ server.on("upgrade", (request, socket, head) => {
 
     if (key) {
         key = key.replace("/", "");
-        con.query("select * from token where private = ?;", [key], (err, result) => {
+        con.query("select *, md5(concat(private, \":\", created_by)) as public from token where private = ?;", [key], (err, result) => {
             if (err) {
                 console.error(err)
                 failAuth();
@@ -69,6 +90,7 @@ server.on("upgrade", (request, socket, head) => {
             if (result.length > 0) {
                 wsServer.handleUpgrade(request, socket, head, socket => {
                     socket.key = key;
+                    socket.public = result[0].public;
                     socket.allowed = {
                         users: [],
                         channels: [],
