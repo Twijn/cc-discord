@@ -28,7 +28,7 @@ async function createUniqueToken() {
     return token;
 }
 
-module.exports = {
+const tokenCmd = {
     data: new SlashCommandBuilder()
         .setName("token")
         .setDescription("Create or manage tokens for CC:Discord Wrapper")
@@ -50,7 +50,138 @@ module.exports = {
                 .setName("authorize")
                 .setDescription("Authorizes permissions to a pre-existing key")
                 .addStringOption(option => option.setName("public").setDescription("Public key to modify").setRequired(true))
+        ).addSubcommand(
+            new SlashCommandSubcommandBuilder()
+                .setName("info")
+                .setDescription("Retrieve info given a public key")
+                .addStringOption(option => option.setName("public").setDescription("Public key to view").setRequired(true))
         ),
+    async info(interaction, public) {
+        const embed = new EmbedBuilder()
+            .setTitle("View Token")
+            .setColor(0x31ad67);
+
+        let token = await con.pquery("select id, created_by, md5(concat(private, \":\", created_by)) as public from token where md5(concat(private, \":\", created_by)) = ?;", [public]);
+
+        if (token.length > 0) {
+            token = token[0];
+
+            let createdBy = await interaction.client.users.fetch(token.created_by);
+            let id = token.id;
+
+            embed.setDescription("**Viewing token** `" + token.public + "`\n**Created by** " + createdBy.toString() + " *(" + createdBy.tag + ")*")
+            
+            const permissions = await con.pquery("select id, guild_id, channel_id from token__permission where token_id = ?;", id);
+
+            let userPermissions = "";
+            let channelPermissions = "";
+
+            let channels = [];
+            let users = [];
+
+            for(let i = 0; i < permissions.length; i++) {
+                let permission = permissions[i];
+
+                if (permission.guild_id) {
+                    try {
+                        const channel = await interaction.client.channels.fetch(permission.channel_id);
+                        
+                        channels = [
+                            ...channels,
+                            {
+                                id: permission.id,
+                                name: channel.name + " (" + channel.guild.name + ")",
+                            }
+                        ];
+
+                        channelPermissions += "\n#" + channel.name + " (" + channel.guild.name + ")";
+                    } catch(err) {
+                        channels = [
+                            ...channels,
+                            {
+                                id: permission.id,
+                                name: permission.channel_id,
+                            }
+                        ];
+                        channelPermissions += "\nInvalid Channel: " + permission.channel_id
+                    } 
+                } else {
+                    try {
+                        const user = await interaction.client.users.fetch(permission.channel_id);
+                        
+                        users = [
+                            ...users,
+                            {
+                                id: permission.id,
+                                name: user.tag,
+                            }
+                        ];
+
+                        userPermissions += "\n" + user.tag;
+                    } catch (err) {
+                        users = [
+                            ...users,
+                            {
+                                id: permission.id,
+                                name: permission.channel_id,
+                            }
+                        ];
+                        userPermissions += "\nInvalid User: " + permission.channel_id
+                    }
+                }
+            }
+
+            if (channelPermissions === "") channelPermissions = "\nNo channel permissions defined";
+            if (userPermissions === "") userPermissions = "\nNo user permissions defined";
+
+            embed.addFields(
+                {
+                    name: "Channel Permissions",
+                    value: "```" + channelPermissions + "```",
+                    inline: false,
+                },
+                {
+                    name: "User Permissions",
+                    value: "```" + userPermissions + "```",
+                    inline: false,
+                });
+
+            let msg = {embeds: [embed], ephemeral: true};
+
+            if (createdBy.id === interaction.member.id) {
+                const menu = new SelectMenuBuilder()
+                    .setCustomId("delete-token-permissions")
+                    .setPlaceholder("Delete Permissions");
+
+                channels.forEach(channel => {
+                    menu.addOptions(
+                        new SelectMenuOptionBuilder()
+                            .setValue(""+channel.id)
+                            .setLabel("Channel: #" + channel.name)
+                        );
+                });
+
+                users.forEach(user => {
+                    menu.addOptions(
+                        new SelectMenuOptionBuilder()
+                            .setValue(""+user.id)
+                            .setLabel("User: " + user.name)
+                        );
+                });
+
+                if (channels.length + users.length > 0) {
+                    msg.components = [
+                        new ActionRowBuilder()
+                            .addComponents(menu)
+                    ];
+                }
+            }
+
+            interaction.reply(msg);
+        } else {
+            interaction.error("Could not find token from public key. Use `/token retrieve` to view active tokens.");
+        }
+    },
     async execute(interaction) {
         if (interaction.options.getSubcommand() === "create") {
             const token = await createUniqueToken();
@@ -169,12 +300,16 @@ module.exports = {
                     menu.setMaxValues(menu.options.length);
 
                     if (menu.options.length === 0) {
-                        interaction.error("You've already authenticated with this token.");
+                        interaction.error("You've already authenticated with this token");
                     } else interaction.reply({embeds: [embed], components: [menuRow], ephemeral: true});
                 }
             } else {
-                interaction.error("Could not find token from private key. Use `/token retrieve` to view active tokens.");
+                interaction.error("Could not find token from public key. Use `/token retrieve` to view active tokens.");
             }
+        } else if (interaction.options.getSubcommand() === "info") {
+            tokenCmd.info(interaction, interaction.options.getString("public"));
         }
     },
-};
+}
+
+module.exports = tokenCmd;
